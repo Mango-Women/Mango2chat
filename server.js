@@ -2,38 +2,55 @@ const express = require('express');
 const { Server } = require('ws');
 const app = express();
 
-// Serve a tiny page so Render knows it's alive
-app.get('/', (req, res) => res.send('Mango Signaling Server Running'));
+// Health check
+app.get('/', (req, res) => {
+  res.send('Mango Signaling Server IS ALIVE');
+});
 
-const wss = new Server({ port: process.env.PORT || 8080 });
+// Create HTTP server first
+const server = app.listen(process.env.PORT || 8080, () => {
+  console.log(`Server running on port ${process.env.PORT || 8080}`);
+});
 
-console.log('WebSocket server starting...');
+// Attach WebSocket to the same server
+const wss = new Server({ server });
 
-const clients = new Map(); // userId → ws
+const clients = new Map();
 
 wss.on('connection', (ws) => {
+  console.log('New WebSocket connection');
+
   ws.on('message', (data) => {
     try {
       const msg = JSON.parse(data);
       const from = msg.from;
       if (from) clients.set(from, ws);
 
-      // Broadcast to the OTHER user only
       const targetId = from === 'mango1' ? 'mango2' : 'mango1';
       const target = clients.get(targetId);
+
       if (target && target.readyState === target.OPEN) {
         target.send(data);
+        console.log(`Forwarded from ${from} → ${targetId}`);
       }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error('Invalid message:', e);
+    }
   });
 
   ws.on('close', () => {
+    console.log('Client disconnected');
     for (let [id, socket] of clients) {
-      if (socket === ws) { clients.delete(id); break; }
+      if (socket === ws) {
+        clients.delete(id);
+        break;
+      }
     }
   });
 });
+
+// Keep Render awake
 setInterval(() => {
-  fetch(`https://mango-signaling.onrender.com`);
-}, 600000);
-console.log('Server running on port', process.env.PORT || 8080);
+  fetch(`https://${process.env.RENDER_EXTERNAL_URL || 'mango2chat.onrender.com.onrender.com'}`)
+    .catch(() => {});
+}, 10 * 60 * 1000);
