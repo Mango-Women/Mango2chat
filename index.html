@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mango Talk & Chat</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
+body { background:linear-gradient(135deg,#1e1e2f,#2a2a40); color:#fff; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
+.container { background:rgba(255,255,255,0.05); border-radius:15px; padding:20px; width:100%; max-width:600px; box-shadow:0 10px 30px rgba(0,0,0,0.3); backdrop-filter:blur(10px); }
+.status { text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; margin-bottom:20px; font-size:1.2em; }
+.controls { text-align:center; margin:20px 0; }
+select, button { padding:10px 20px; border:none; border-radius:25px; background:#ff6b6b; color:white; cursor:pointer; transition:transform .2s,background .3s; margin:0 5px; }
+select:hover, button:hover { transform:translateY(-2px); background:#ff8787; }
+.chat-section { background:rgba(255,255,255,0.1); border-radius:10px; padding:15px; height:300px; overflow-y:auto; margin-bottom:15px; }
+.chat-message { margin:5px 0; padding:8px 12px; border-radius:8px; background:#4ecdc4; max-width:80%; word-wrap:break-word; }
+.chat-message.received { background:#45b7d1; margin-left:auto; }
+.input-container { display:flex; gap:10px; margin-top:15px; }
+#chatInput { flex-grow:1; padding:10px; border:none; border-radius:25px; background:rgba(255,255,255,0.2); color:white; outline:none; }
+#sendButton { padding:10px 20px; border:none; border-radius:25px; background:#ff6b6b; color:white; cursor:pointer; transition:transform .2s,background .3s; }
+#sendButton:hover { transform:translateY(-2px); background:#ff8787; }
+@media (max-width:768px) { .container { max-width:100%; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="status" id="status">Disconnected</div>
+  <div class="controls">
+    <select id="userId">
+      <option value="">Select Your ID</option>
+      <option value="mango1">Mango 1</option>
+      <option value="mango2">Mango 2</option>
+    </select>
+    <button id="startButton">Start Call</button>
+    <button id="endButton">End Call</button>
+  </div>
+  <div class="chat-section" id="chatBox"></div>
+  <div class="input-container">
+    <input type="text" id="chatInput" placeholder="Type a message...">
+    <button id="sendButton">Send</button>
+  </div>
+</div>
+
+<script>
+/* ====================== GLOBALS ====================== */
+const status = document.getElementById('status');
+const userIdSelect = document.getElementById('userId');
+const chatBox = document.getElementById('chatBox');
+const chatInput = document.getElementById('chatInput');
+const startButton = document.getElementById('startButton');
+const endButton = document.getElementById('endButton');
+const sendButton = document.getElementById('sendButton');
+
+let localStream = null;
+let peerConnection = null;
+let dataChannel = null;
+let ws = null;
+const signalQueue = [];
+
+const servers = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+/* ====================== EVENT LISTENERS ====================== */
+startButton.addEventListener('click', startCall);
+endButton.addEventListener('click', endCall);
+sendButton.addEventListener('click', sendMessage);
+chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
+
+/* ====================== WEBSOCKET ====================== */
+function setupWebSocket(userId) {
+  if (ws) ws.close();
+
+  console.log('Setting up WebSocket for', userId);
+  // ---- CHANGE THIS URL TO YOUR OWN RENDER SERVER ----
+  ws = new WebSocket('wss://YOUR-SERVER-NAME.onrender.com');
+
+  ws.onopen = () => {
+    console.log('WebSocket CONNECTED');
+    status.textContent = 'Connected to server';
+    sendPendingSignals();
+  };
+
+  ws.onmessage = async (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (!peerConnection) return;
+
+      if (data.sdp) {
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        if (data.sdp.type === 'offer') {
+          const answer = await peerConnection.createAnswer();
+          await peerConnection.setLocalDescription(answer);
+          sendSignal({ sdp: peerConnection.localDescription, from: userId });
+        }
+      } else if (data.ice) {
+        await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
+      }
+    } catch (err) {
+      console.error('Message handling error:', err);
+    }
+  };
+
+  ws.onerror = (err) => {
+    console.error('WS Error:', err);
+    status.textContent = 'Server error';
+  };
+
+  ws.onclose = () => {
+    console.log('WebSocket closed');
+    if (status.textContent !== 'Disconnected') {
+      status.textContent = 'Server disconnected';
+    }
+  };
+}
+
+/* ====================== SIGNALING ====================== */
+function sendSignal(data) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(data));
+  } else {
+    signalQueue.push(data);
+  }
+}
+function sendPendingSignals() {
+  while (signalQueue.length && ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(signalQueue.shift()));
+  }
+}
+
+/* ====================== START CALL ====================== */
+async function startCall() {
+  const userId = userIdSelect.value;
+  if (!userId) { status.textContent = 'Select a user ID'; return; }
+
+  await endCall(); // full cleanup first
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    setupWebSocket(userId);
+
+    // wait for WS
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('WS timeout')), 8000);
+      const check = () => {
+        if (ws && ws.readyState === WebSocket.OPEN) { clearTimeout(timeout); resolve(); }
+        else if (ws && ws.readyState >= WebSocket.CLOSING) { clearTimeout(timeout); reject(); }
+        else setTimeout(check, 100);
+      };
+      check();
+    });
+
+    peerConnection = new RTCPeerConnection(servers);
+    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+
+    // ---------- DATA CHANNEL ----------
+    if (userId === 'mango1') {
+      dataChannel = peerConnection.createDataChannel('chat');
+      attachDataChannel();
+    }
+    peerConnection.ondatachannel = e => { dataChannel = e.channel; attachDataChannel(); };
+
+    function attachDataChannel() {
+      dataChannel.onopen = () => {
+        console.log('DataChannel OPEN');
+        status.textContent = 'Connected - Mango Chat Active';
+      };
+      dataChannel.onclose = () => console.log('DataChannel closed');
+      dataChannel.onmessage = e => displayMessage(e.data, 'received');
+    }
+
+    // ---------- AUDIO ----------
+    peerConnection.ontrack = e => {
+      const audio = new Audio();
+      audio.srcObject = e.streams[0];
+      audio.play().catch(() => {});
+      status.textContent = 'Connected - Mango Talk Active';
+    };
+
+    // ---------- ICE ----------
+    peerConnection.onicecandidate = e => {
+      if (e.candidate) sendSignal({ ice: e.candidate, from: userId });
+    };
+    peerConnection.onconnectionstatechange = () => {
+      console.log('PC state:', peerConnection.connectionState);
+      if (peerConnection.connectionState === 'failed') status.textContent = 'Connection failed';
+    };
+
+    // ---------- OFFER ----------
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    sendSignal({ sdp: peerConnection.localDescription, from: userId });
+
+    status.textContent = 'Calling Your Sexy...';
+  } catch (err) {
+    console.error('startCall error:', err);
+    status.textContent = 'Error: ' + err.message;
+  }
+}
+
+/* ====================== SEND MESSAGE ====================== */
+function sendMessage() {
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  if (dataChannel && dataChannel.readyState === 'open') {
+    dataChannel.send(msg);
+    displayMessage(msg, 'sent');
+    chatInput.value = '';
+  } else {
+    displayMessage('Not connected', 'sent');
+  }
+}
+function displayMessage(msg, type) {
+  const div = document.createElement('div');
+  div.className = `chat-message ${type}`;
+  div.textContent = msg;
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+/* ====================== END CALL (NUCLEAR CLEANUP) ====================== */
+function endCall() {
+  console.log('FORCE END CALL');
+
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  if (peerConnection) { peerConnection.close(); peerConnection = null; }
+  if (dataChannel) { dataChannel.close(); dataChannel = null; }
+  if (ws) { ws.onopen = ws.onmessage = ws.onerror = ws.onclose = null; ws.close(); ws = null; }
+
+  signalQueue.length = 0;
+  status.textContent = 'Disconnected';
+  // chatBox.innerHTML = ''; // optional
+}
+</script>
+</body>
+</html>
