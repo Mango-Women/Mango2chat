@@ -51,6 +51,6 @@ wss.on('connection', (ws) => {
 
 // Keep Render awake
 setInterval(() => {
-  fetch(`https://${process.env.RENDER_EXTERNAL_URL || 'mango2chat.onrender.com.onrender.com'}`)
+  fetch(`https://${process.env.RENDER_EXTERNAL_URL || 'mango2achat.onrender.com.onrender.com'}`)
     .catch(() => {});
 }, 10 * 60 * 1000);
