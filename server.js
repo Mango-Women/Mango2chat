@@ -19,36 +19,26 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (data) => {
     try {
-      const msg = JSON.parse(data.toString());
+      const msg = JSON.parse(data.toString()); // Force string
       const from = msg.from;
+      if (from) clients.set(from, ws);
 
-      if (from) {
-        clients.set(from, ws);
-        console.log(`Client registered: ${from}`);
-      }
-
-      // Forward to the OTHER user
       const targetId = from === 'mango1' ? 'mango2' : 'mango1';
       const target = clients.get(targetId);
 
       if (target && target.readyState === target.OPEN) {
-        target.send(data);
-        console.log(`Forwarded message from ${from} to ${targetId}`);
-      } else {
-        console.log(`Target ${targetId} not connected yet`);
+        target.send(data.toString()); // SEND AS STRING
+        console.log(`Forwarded from ${from} to ${targetId}`);
       }
-
     } catch (e) {
-      console.error('Invalid JSON:', e);
+      console.error('Invalid message:', e);
     }
   });
 
   ws.on('close', () => {
-    console.log('Client disconnected');
     for (let [id, socket] of clients.entries()) {
       if (socket === ws) {
         clients.delete(id);
-        console.log(`Unregistered: ${id}`);
         break;
       }
     }
