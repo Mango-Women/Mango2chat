@@ -79,25 +79,30 @@ function setupWebSocket(userId) {
     sendPendingSignals();
   };
 
-  ws.onmessage = async (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      if (!peerConnection) return;
+ws.onmessage = async (event) => {
+  try {
+    const data = JSON.parse(event.data);
 
-      if (data.sdp) {
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        if (data.sdp.type === 'offer') {
-          const answer = await peerConnection.createAnswer();
-          await peerConnection.setLocalDescription(answer);
-          sendSignal({ sdp: peerConnection.localDescription, from: userId });
-        }
-      } else if (data.ice) {
-        await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
+    // === SDP (Offer/Answer) ===
+    if (data.sdp && peerConnection) {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      if (data.sdp.type === 'offer') {
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        sendSignal({ sdp: peerConnection.localDescription, from: userId });
       }
-    } catch (err) {
-      console.error('Message handling error:', err);
     }
-  };
+
+    // === ICE CANDIDATE (FIX: Wait for remote desc) ===
+    else if (data.ice && peerConnection && peerConnection.remoteDescription) {
+      await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
+      console.log('ICE candidate ADDED');
+    }
+
+  } catch (err) {
+    console.error('WebSocket message error:', err);
+  }
+};
 
   ws.onerror = (err) => {
     console.error('WS Error:', err);
