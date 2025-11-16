@@ -134,72 +134,95 @@
     }
 
     // === START CALL ===
-    async function startCall() {
-      const userId = userIdSelect.value;
-      if (!userId) { status.textContent = 'Select ID'; return; }
+   async function startCall() {
+  const userId = userIdSelect.value;
+  if (!userId) { status.textContent = 'Select ID'; return; }
 
-      await endCall();
-      startButton.disabled = true;
-      endButton.disabled = false;
+  await endCall();
+  startButton.disabled = true;
+  endButton.disabled = false;
 
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: { 
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        sampleRate: 48000
+      } 
+    });
 
-        setupWebSocket(userId);
-        await new Promise((resolve, reject) => {
-          const t = setTimeout(reject, 8000);
-          const check = () => {
-            if (ws && ws.readyState === WebSocket.OPEN) { clearTimeout(t); resolve(); }
-            else setTimeout(check, 100);
-          };
-          check();
-        });
+    setupWebSocket(userId);
+    await new Promise((resolve, reject) => {
+      const t = setTimeout(reject, 8000);
+      const check = () => {
+        if (ws && ws.readyState === WebSocket.OPEN) { clearTimeout(t); resolve(); }
+        else setTimeout(check, 100);
+      };
+      check();
+    });
 
-        peerConnection = new RTCPeerConnection(servers);
-        localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
+    peerConnection = new RTCPeerConnection(servers);
+    localStream.getTracks().forEach(t => peerConnection.addTrack(t, localStream));
 
-        if (userId === 'mango1') {
-          dataChannel = peerConnection.createDataChannel('chat');
-          setupDataChannel();
-        }
-        peerConnection.ondatachannel = e => { dataChannel = e.channel; setupDataChannel(); };
-
-        function setupDataChannel() {
-          dataChannel.onopen = () => status.textContent = 'Audio + Chat Active';
-          dataChannel.onmessage = e => displayMessage(e.data, 'received');
-        }
-
-        peerConnection.ontrack = () => {
-          status.textContent = 'Audio Call Active';
-        };
-
-        peerConnection.onicecandidate = e => {
-          if (e.candidate) {
-            console.log('Sending ICE');
-            sendSignal({ ice: e.candidate, from: userId });
-          }
-        };
-
-        const offer = await peerConnection.createOffer();
-        await peerConnection.setLocalDescription(offer);
-        sendSignal({ sdp: peerConnection.localDescription, from: userId });
-
-        status.textContent = 'Calling Your Sexy...';
-
-      } catch (err) {
-        status.textContent = 'Error: ' + err.message;
-        resetButtons();
-      }
+    if (userId === 'mango1') {
+      dataChannel = peerConnection.createDataChannel('chat');
+      setupDataChannel();
     }
+    peerConnection.ondatachannel = e => { dataChannel = e.channel; setupDataChannel(); };
+
+    function setupDataChannel() {
+      dataChannel.onopen = () => {
+        console.log('CHAT OPEN');
+        status.textContent = 'Audio + Chat Active — TALK & TYPE!';
+      };
+      dataChannel.onmessage = (e) => {
+        console.log('MSG:', e.data);
+        displayMessage(e.data, 'received');
+      };
+    }
+
+    peerConnection.ontrack = (event) => {
+      console.log('REMOTE AUDIO INCOMING');
+      const remoteAudio = new Audio();
+      remoteAudio.srcObject = event.streams[0];
+      remoteAudio.autoplay = true;
+      remoteAudio.play().catch(e => console.log('Play error:', e));
+      status.textContent = 'Audio Call Active — HEAR HER!';
+    };
+
+    peerConnection.onicecandidate = e => {
+      if (e.candidate) {
+        console.log('ICE sent');
+        sendSignal({ ice: e.candidate, from: userId });
+      }
+    };
+
+    const offer = await peerConnection.createOffer();
+    await peerConnection.setLocalDescription(offer);
+    sendSignal({ sdp: peerConnection.localDescription, from: userId });
+
+    status.textContent = 'Calling Your Sexy...';
+
+  } catch (err) {
+    status.textContent = 'Error: ' + err.message;
+    resetButtons();
+  }
+}
 
     // === CHAT ===
     function sendMessage() {
-      const msg = chatInput.value.trim();
-      if (!msg || !dataChannel || dataChannel.readyState !== 'open') return;
-      dataChannel.send(msg);
-      displayMessage(msg, 'sent');
-      chatInput.value = '';
-    }
+  const msg = chatInput.value.trim();
+  if (!msg) return;
+  if (!dataChannel || dataChannel.readyState !== 'open') {
+    console.log('Chat not ready yet');
+    return;
+  }
+  console.log('Sending message:', msg);
+  dataChannel.send(msg);
+  displayMessage(msg, 'sent');
+  chatInput.value = '';
+}
 
     function displayMessage(msg, type) {
       const div = document.createElement('div');
