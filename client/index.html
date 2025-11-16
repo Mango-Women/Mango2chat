@@ -126,6 +126,10 @@ function sendPendingSignals() {
   }
 }
 
+  peerConnection.oniceconnectionstatechange = () => {
+  console.log('ICE state:', peerConnection.iceConnectionState);
+  status.textContent = 'ICE: ' + peerConnection.iceConnectionState;
+};
 /* ====================== START CALL ====================== */
 async function startCall() {
   const userId = userIdSelect.value;
