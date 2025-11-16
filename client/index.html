@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mango Audio Call</title>
+  <title>Mango  Call</title>
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
     body { background:linear-gradient(135deg,#1e1e2f,#2a2a40); color:#fff; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
@@ -32,7 +32,7 @@
         <option value="mango1">Mango 1</option>
         <option value="mango2">Mango 2</option>
       </select>
-      <button id="startButton">Start Audio Call</button>
+      <button id="startButton">Start a Call</button>
       <button id="endButton" disabled>End Call</button>
     </div>
 
@@ -199,7 +199,7 @@
         remoteAudio.play().catch(e => console.log('Play error:', e));
       }, 500);
 
-      status.textContent = 'Audio Call Active — CRYSTAL CLEAR!';
+      status.textContent = 'Audio Call Active — BABY!';
     };
 
     peerConnection.onicecandidate = e => {
@@ -213,7 +213,7 @@
     await peerConnection.setLocalDescription(offer);
     sendSignal({ sdp: peerConnection.localDescription, from: userId });
 
-    status.textContent = 'Calling Your Sexy...';
+    status.textContent = 'Calling You Sexy...';
 
   } catch (err) {
     status.textContent = 'Error: ' + err.message;
