@@ -96,9 +96,11 @@ function setupWebSocket(userId) {
 
 ws.onmessage = async (event) => {
   try {
-    const data = JSON.parse(event.data);
+    // Force string if binary
+    const text = typeof event.data === 'string' ? event.data : await event.data.text();
+    const data = JSON.parse(text);
 
-    // === SDP: Offer or Answer ===
+    // === SDP ===
     if (data.sdp && peerConnection) {
       await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
       console.log('Remote SDP set:', data.sdp.type);
@@ -111,19 +113,16 @@ ws.onmessage = async (event) => {
       }
     }
 
-    // === ICE: ONLY AFTER REMOTE DESCRIPTION IS SET ===
+    // === ICE ===
     if (data.ice && peerConnection && peerConnection.remoteDescription) {
       await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
-      console.log('ICE candidate ADDED from:', data.from);
-    } else if (data.ice) {
-      console.log('ICE candidate RECEIVED but remoteDescription not ready yet');
+      console.log('ICE candidate ADDED');
     }
 
   } catch (err) {
     console.error('WebSocket message error:', err);
   }
 };
-
   ws.onerror = (err) => {
     console.error('WS Error:', err);
     status.textContent = 'Server error';
@@ -151,7 +150,6 @@ function sendPendingSignals() {
   }
 }
 
-  peerConnection.oniceconnectionstatechange = () => {
   console.log('ICE state:', peerConnection.iceConnectionState);
   status.textContent = 'ICE: ' + peerConnection.iceConnectionState;
 };
