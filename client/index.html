@@ -3,122 +3,280 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mango  Call</title>
+  <title>Mango Call</title>
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',sans-serif; }
-    body { background:linear-gradient(135deg,#1e1e2f,#2a2a40); color:#fff; min-height:100vh; display:flex; justify-content:center; align-items:center; padding:20px; }
-    .container { background:rgba(255,255,255,0.05); border-radius:15px; padding:25px; width:100%; max-width:400px; box-shadow:0 10px 30px rgba(0,0,0,0.3); backdrop-filter:blur(10px); }
-    .status { text-align:center; padding:15px; background:rgba(255,255,255,0.1); border-radius:10px; margin-bottom:20px; font-size:1.2em; }
-    .controls { text-align:center; margin:20px 0; display:flex; flex-direction:column; gap:12px; }
-    select, button { padding:12px; border:none; border-radius:25px; background:#ff6b6b; color:white; cursor:pointer; transition:0.3s; font-size:1em; }
-    select:hover, button:hover { background:#ff8787; transform:translateY(-2px); }
-    button:disabled { background:#666; cursor:not-allowed; }
-    .chat-section { background:rgba(255,255,255,0.1); border-radius:10px; padding:15px; height:200px; overflow-y:auto; margin:15px 0; }
-    .chat-message { margin:5px 0; padding:8px 12px; border-radius:8px; background:#4ecdc4; max-width:80%; word-wrap:break-word; }
-    .chat-message.received { background:#45b7d1; margin-left:auto; }
-    .input-container { display:flex; gap:10px; }
-    #chatInput { flex-grow:1; padding:12px; border:none; border-radius:25px; background:rgba(255,255,255,0.2); color:white; outline:none; }
-    #sendButton { padding:12px 20px; border:none; border-radius:25px; background:#ff6b6b; color:white; cursor:pointer; }
-    #sendButton:hover { background:#ff8787; }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+    body {
+      background: linear-gradient(135deg, #1e1e2f, #2a2a40);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container {
+      background: rgba(255,255,255,0.05);
+      border-radius: 15px;
+      padding: 25px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+    }
+    .status {
+      text-align: center;
+      padding: 15px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      margin-bottom: 20px;
+      font-size: 1em;
+      transition: background 0.3s;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .status.active  { background: rgba(78,205,196,0.3); }
+    .status.waiting { background: rgba(255,196,87,0.3); }
+    .status.error   { background: rgba(255,107,107,0.3); }
+    .controls {
+      text-align: center;
+      margin: 20px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    select, button {
+      padding: 12px;
+      border: none;
+      border-radius: 25px;
+      background: #ff6b6b;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+      font-size: 1em;
+    }
+    select:hover, button:hover { background: #ff8787; transform: translateY(-2px); }
+    button:disabled { background: #555; cursor: not-allowed; transform: none; }
+    .chat-section {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 15px;
+      height: 200px;
+      overflow-y: auto;
+      margin: 15px 0;
+    }
+    .chat-message {
+      margin: 5px 0;
+      padding: 8px 12px;
+      border-radius: 8px;
+      max-width: 80%;
+      word-wrap: break-word;
+      font-size: 0.95em;
+    }
+    .chat-message.sent    { background: #4ecdc4; }
+    .chat-message.received { background: #45b7d1; margin-left: auto; }
+    .input-container { display: flex; gap: 10px; }
+    #chatInput {
+      flex-grow: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 25px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      outline: none;
+    }
+    #chatInput::placeholder { color: rgba(255,255,255,0.5); }
+    #sendButton {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 25px;
+      background: #ff6b6b;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    #sendButton:hover { background: #ff8787; }
+    .hint {
+      text-align: center;
+      font-size: 0.8em;
+      color: rgba(255,255,255,0.4);
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="status" id="status">Disconnected</div>
-
+    <div class="status" id="status">Select your ID and tap Start</div>
     <div class="controls">
       <select id="userId">
         <option value="">Select Your ID</option>
         <option value="mango1">Mango 1</option>
         <option value="mango2">Mango 2</option>
       </select>
-      <button id="startButton">Start a Call</button>
+      <button id="startButton">Start Call</button>
       <button id="endButton" disabled>End Call</button>
     </div>
-
     <div class="chat-section" id="chatBox"></div>
     <div class="input-container">
       <input type="text" id="chatInput" placeholder="Type a message...">
       <button id="sendButton">Send</button>
     </div>
+    <p class="hint">Both tap Start. My Butty Monika You  initiates the call automatically.</p>
   </div>
 
-  <script>
-    // === ELEMENTS ===
-    const status = document.getElementById('status');
-    const userIdSelect = document.getElementById('userId');
-    const startButton = document.getElementById('startButton');
-    const endButton = document.getElementById('endButton');
-    const chatBox = document.getElementById('chatBox');
-    const chatInput = document.getElementById('chatInput');
-    const sendButton = document.getElementById('sendButton');
+  <!-- Persistent audio element for remote audio -->
+  <audio id="remoteAudio" autoplay playsinline></audio>
 
-    // === GLOBALS ===
-    let localStream = null;
+  <script>
+    // === DOM ===
+    const statusEl    = document.getElementById('status');
+    const userIdSel   = document.getElementById('userId');
+    const startBtn    = document.getElementById('startButton');
+    const endBtn      = document.getElementById('endButton');
+    const chatBox     = document.getElementById('chatBox');
+    const chatInput   = document.getElementById('chatInput');
+    const sendBtn     = document.getElementById('sendButton');
+    const remoteAudio = document.getElementById('remoteAudio');
+
+    // === STATE ===
+    let localStream    = null;
     let peerConnection = null;
-    let dataChannel = null;
-    let ws = null;
-    const signalQueue = [];
-    const servers = {
+    let dataChannel    = null;
+    let ws             = null;
+    let myUserId       = null;
+    let offerCreated   = false;
+    let heartbeatTimer = null;
+    const signalQueue  = [];
+    const iceQueue     = [];
+
+    const ICE_SERVERS = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
         { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
       ]
     };
 
-    // === EVENT LISTENERS ===
-    startButton.addEventListener('click', startCall);
-    endButton.addEventListener('click', endCall);
-    sendButton.addEventListener('click', sendMessage);
+    // === EVENTS ===
+    startBtn.addEventListener('click', startCall);
+    endBtn.addEventListener('click', endCall);
+    sendBtn.addEventListener('click', sendMessage);
     chatInput.addEventListener('keypress', e => { if (e.key === 'Enter') sendMessage(); });
 
+    // === STATUS HELPER ===
+    function setStatus(text, type) {
+      statusEl.textContent = text;
+      statusEl.className = 'status' + (type ? ' ' + type : '');
+    }
+
     // === WEBSOCKET ===
-    function setupWebSocket(userId) {
-      if (ws) ws.close();
-      ws = new WebSocket('wss://mango2achat.onrender.com'); // CHANGE IF NEEDED
+    function connectWS() {
+      if (ws) { ws.onclose = null; ws.close(); }
+      ws = new WebSocket('wss://mango2achat.onrender.com');
 
       ws.onopen = () => {
-        console.log('WebSocket CONNECTED');
-        status.textContent = 'Connected to server';
+        console.log('[WS] Connected');
+        setStatus('Connected to server — waiting for partner...', 'waiting');
         sendPendingSignals();
+        // Announce presence
+        sendSignal({ type: 'join', from: myUserId });
+        // Periodic heartbeat so late-joining partners detect us
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = setInterval(() => {
+          sendSignal({ type: 'join', from: myUserId });
+        }, 3000);
       };
 
       ws.onmessage = async (event) => {
         try {
-          const text = typeof event.data === 'string' ? event.data : await event.data.text();
-          const data = JSON.parse(text);
+          const raw = typeof event.data === 'string' ? event.data : await event.data.text();
+          const data = JSON.parse(raw);
 
-          if (data.sdp && peerConnection) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            console.log('SDP received:', data.sdp.type);
+          // CRITICAL: ignore own messages (server may relay them back)
+          if (data.from === myUserId) return;
 
-            if (data.sdp.type === 'offer') {
-              const answer = await peerConnection.createAnswer();
-              await peerConnection.setLocalDescription(answer);
-              sendSignal({ sdp: peerConnection.localDescription, from: userId });
-              console.log('Answer sent');
+          // --- PRESENCE ---
+          if (data.type === 'join') {
+            console.log('[WS] Partner online:', data.from);
+            clearInterval(heartbeatTimer);
+
+            // mango1 is always the caller; mango2 just waits for the offer
+            if (myUserId === 'mango1' && !offerCreated && peerConnection) {
+              setStatus('Partner found — calling...', 'waiting');
+              await createAndSendOffer();
+            } else if (myUserId === 'mango2') {
+              setStatus('Connected — waiting for call...', 'waiting');
             }
+            return;
           }
 
-          if (data.ice && peerConnection && peerConnection.remoteDescription) {
-            await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
-            console.log('ICE candidate ADDED');
+          // --- SDP ---
+          if (data.sdp && peerConnection) {
+            console.log('[SDP] Received:', data.sdp.type, '| state:', peerConnection.signalingState);
+
+            // Guard: only accept offers in 'stable', answers in 'have-local-offer'
+            if (data.sdp.type === 'offer' && peerConnection.signalingState !== 'stable') {
+              console.warn('[SDP] Ignoring offer — state is', peerConnection.signalingState);
+              return;
+            }
+            if (data.sdp.type === 'answer' && peerConnection.signalingState !== 'have-local-offer') {
+              console.warn('[SDP] Ignoring answer — state is', peerConnection.signalingState);
+              return;
+            }
+
+            await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            console.log('[SDP] Remote description set');
+            await drainICEQueue();
+
+            if (data.sdp.type === 'offer') {
+              // Callee: create and send answer
+              const answer = await peerConnection.createAnswer();
+              await peerConnection.setLocalDescription(answer);
+              sendSignal({ sdp: peerConnection.localDescription, from: myUserId });
+              console.log('[SDP] Answer sent');
+              setStatus('Answering call...', 'waiting');
+            } else {
+              console.log('[SDP] Answer accepted — connecting...');
+              setStatus('Connecting audio...', 'waiting');
+            }
+            return;
+          }
+
+          // --- ICE ---
+          if (data.ice && peerConnection) {
+            if (peerConnection.remoteDescription) {
+              try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.ice));
+              } catch (e) {
+                console.error('[ICE] Add error:', e);
+              }
+            } else {
+              // Queue: remote description not set yet
+              iceQueue.push(data.ice);
+              console.log('[ICE] Queued (no remote desc yet)');
+            }
+            return;
           }
 
         } catch (err) {
-          console.error('WebSocket error:', err);
+          console.error('[WS] Message error:', err);
         }
       };
 
-      ws.onerror = () => status.textContent = 'Server error';
+      ws.onerror = () => setStatus('Server error — try again', 'error');
       ws.onclose = () => {
-        if (status.textContent !== 'Disconnected') status.textContent = 'Server disconnected';
+        console.log('[WS] Closed');
+        clearInterval(heartbeatTimer);
+        if (!statusEl.textContent.includes('Disconnected')) {
+          setStatus('Server disconnected', 'error');
+        }
       };
     }
 
-    // === SIGNALING ===
+    // === SIGNALING HELPERS ===
     function sendSignal(data) {
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(data));
@@ -133,110 +291,177 @@
       }
     }
 
-    // === START CALL ===
-  async function startCall() {
-  const userId = userIdSelect.value;
-  if (!userId) { status.textContent = 'Select ID'; return; }
-
-  await endCall();
-  startButton.disabled = true;
-  endButton.disabled = false;
-
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-        sampleRate: 48000,
-        channelCount: 1,
-        latency: 0.01
+    async function drainICEQueue() {
+      while (iceQueue.length) {
+        try {
+          const candidate = iceQueue.shift();
+          await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('[ICE] Queued candidate added');
+        } catch (e) {
+          console.error('[ICE] Queued candidate error:', e);
+        }
       }
-    });
-
-    setupWebSocket(userId);
-    await new Promise((resolve, reject) => {
-      const t = setTimeout(reject, 8000);
-      const check = () => {
-        if (ws && ws.readyState === WebSocket.OPEN) { clearTimeout(t); resolve(); }
-        else setTimeout(check, 100);
-      };
-      check();
-    });
-
-    peerConnection = new RTCPeerConnection(servers);
-    
-    localStream.getTracks().forEach(track => {
-      if (track.kind === 'audio') track.enabled = true;
-      peerConnection.addTrack(track, localStream);
-    });
-
-    if (userId === 'mango1') {
-      dataChannel = peerConnection.createDataChannel('chat');
-      setupDataChannel();
     }
-    peerConnection.ondatachannel = e => { dataChannel = e.channel; setupDataChannel(); };
 
+    async function createAndSendOffer() {
+      if (offerCreated) return;
+      offerCreated = true;
+      clearInterval(heartbeatTimer);
+
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      sendSignal({ sdp: peerConnection.localDescription, from: myUserId });
+      console.log('[SDP] Offer sent');
+      setStatus('Calling...', 'waiting');
+    }
+
+    // === START CALL ===
+    async function startCall() {
+      const userId = userIdSel.value;
+      if (!userId) { setStatus('Select your ID first!', 'error'); return; }
+
+      endCall(); // clean up any previous session
+
+      startBtn.disabled = true;
+      endBtn.disabled = false;
+      myUserId = userId;
+      offerCreated = false;
+
+      try {
+        // 1. Get local audio
+        localStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        });
+        console.log('[Media] Local stream obtained');
+
+        // 2. Create PeerConnection BEFORE connecting WS
+        //    so it's ready to receive incoming signals immediately
+        peerConnection = new RTCPeerConnection(ICE_SERVERS);
+
+        // Monitor ICE connection state
+        peerConnection.oniceconnectionstatechange = () => {
+          const s = peerConnection.iceConnectionState;
+          console.log('[ICE] State:', s);
+          if (s === 'connected' || s === 'completed') {
+            setStatus('Call Active', 'active');
+          } else if (s === 'disconnected') {
+            setStatus('Connection interrupted...', 'error');
+          } else if (s === 'failed') {
+            setStatus('Connection failed — End call and try again', 'error');
+          }
+        };
+
+        peerConnection.onconnectionstatechange = () => {
+          console.log('[PC] State:', peerConnection.connectionState);
+        };
+
+        // 3. Add local audio tracks
+        localStream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, localStream);
+        });
+        console.log('[Media] Tracks added to PC');
+
+        // 4. Data channel — only caller (mango1) creates it
+        if (userId === 'mango1') {
+          dataChannel = peerConnection.createDataChannel('chat');
+          setupDataChannel();
+        }
+        peerConnection.ondatachannel = e => {
+          dataChannel = e.channel;
+          setupDataChannel();
+        };
+
+        // 5. Handle remote audio — use persistent <audio> element
+        peerConnection.ontrack = event => {
+          console.log('[Media] Remote track received');
+          remoteAudio.srcObject = event.streams[0];
+          remoteAudio.play().catch(err => {
+            console.warn('[Media] Autoplay blocked:', err.message);
+            // Resume playback on next user tap (browser policy)
+            const resume = () => {
+              remoteAudio.play().catch(() => {});
+              document.removeEventListener('click', resume);
+              document.removeEventListener('touchstart', resume);
+            };
+            document.addEventListener('click', resume, { once: true });
+            document.addEventListener('touchstart', resume, { once: true });
+          });
+        };
+
+        // 6. Forward ICE candidates
+        peerConnection.onicecandidate = e => {
+          if (e.candidate) {
+            sendSignal({ ice: e.candidate, from: myUserId });
+          }
+        };
+
+        // 7. Connect to signaling server
+        setStatus('Connecting to server...', 'waiting');
+        connectWS();
+
+        // Wait for WS to open (with timeout)
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(
+            () => reject(new Error('Server timeout (15s) — is Render awake?')),
+            15000
+          );
+          const check = () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              clearTimeout(timeout);
+              resolve();
+            } else {
+              setTimeout(check, 100);
+            }
+          };
+          check();
+        });
+
+        // mango2 just waits for mango1's offer (triggered by "join" handshake)
+        if (userId === 'mango2') {
+          setStatus('Waiting for call...', 'waiting');
+        }
+
+      } catch (err) {
+        console.error('[Start] Error:', err);
+        setStatus('Error: ' + err.message, 'error');
+        endCall();
+      }
+    }
+
+    // === DATA CHANNEL ===
     function setupDataChannel() {
       dataChannel.onopen = () => {
-        console.log('CHAT OPEN');
-        status.textContent = 'Audio + Chat Active — NO ECHO!';
+        console.log('[Chat] Channel open');
+        setStatus('Audio + Chat Active', 'active');
       };
-      dataChannel.onmessage = (e) => {
-        console.log('MSG:', e.data);
+      dataChannel.onmessage = e => {
         displayMessage(e.data, 'received');
+      };
+      dataChannel.onerror = e => {
+        console.error('[Chat] Error:', e);
       };
     }
 
-    peerConnection.ontrack = (event) => {
-      console.log('REMOTE AUDIO INCOMING');
-      const remoteAudio = new Audio();
-      remoteAudio.srcObject = event.streams[0];
-      remoteAudio.autoplay = true;
-      remoteAudio.volume = 1.0;
-
-      setTimeout(() => {
-        remoteAudio.play().catch(e => console.log('Play error:', e));
-      }, 500);
-
-      status.textContent = 'Audio Call Active — BABY!';
-    };
-
-    peerConnection.onicecandidate = e => {
-      if (e.candidate) {
-        console.log('ICE sent');
-        sendSignal({ ice: e.candidate, from: userId });
-      }
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    sendSignal({ sdp: peerConnection.localDescription, from: userId });
-
-    status.textContent = 'Calling You Sexy...';
-
-  } catch (err) {
-    status.textContent = 'Error: ' + err.message;
-    resetButtons();
-  }
-}
     // === CHAT ===
     function sendMessage() {
-  const msg = chatInput.value.trim();
-  if (!msg) return;
-  if (!dataChannel || dataChannel.readyState !== 'open') {
-    console.log('Chat not ready yet');
-    return;
-  }
-  console.log('Sending message:', msg);
-  dataChannel.send(msg);
-  displayMessage(msg, 'sent');
-  chatInput.value = '';
-}
+      const msg = chatInput.value.trim();
+      if (!msg) return;
+      if (!dataChannel || dataChannel.readyState !== 'open') {
+        setStatus('Chat not connected yet', 'error');
+        return;
+      }
+      dataChannel.send(msg);
+      displayMessage(msg, 'sent');
+      chatInput.value = '';
+    }
 
     function displayMessage(msg, type) {
       const div = document.createElement('div');
-      div.className = `chat-message ${type}`;
+      div.className = 'chat-message ' + type;
       div.textContent = msg;
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
@@ -244,20 +469,35 @@
 
     // === END CALL ===
     function endCall() {
-      if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-      if (peerConnection) { peerConnection.close(); peerConnection = null; }
-      if (dataChannel) { dataChannel.close(); dataChannel = null; }
-      if (ws) { ws.close(); ws = null; }
+      clearInterval(heartbeatTimer);
+
+      if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+      }
+      if (dataChannel) {
+        dataChannel.close();
+        dataChannel = null;
+      }
+      if (peerConnection) {
+        peerConnection.close();
+        peerConnection = null;
+      }
+      if (ws) {
+        ws.onclose = null; // prevent status update on intentional close
+        ws.close();
+        ws = null;
+      }
 
       signalQueue.length = 0;
-      chatBox.innerHTML = '';
-      status.textContent = 'Disconnected';
-      resetButtons();
-    }
+      iceQueue.length = 0;
+      offerCreated = false;
 
-    function resetButtons() {
-      startButton.disabled = false;
-      endButton.disabled = true;
+      remoteAudio.srcObject = null;
+      chatBox.innerHTML = '';
+      setStatus('Disconnected');
+      startBtn.disabled = false;
+      endBtn.disabled = true;
     }
   </script>
 </body>
